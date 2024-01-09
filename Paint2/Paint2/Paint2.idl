@@ -1,0 +1,29 @@
+// Paint2.idl : type library source for Paint2.exe
+
+// This file will be processed by the MIDL compiler to produce the
+// type library (Paint2.tlb).
+
+[ uuid(4eaf6e48-ad79-48a1-832c-a8f2ca99db3e), version(1.0) ]
+library Paint2
+{
+	importlib("stdole32.tlb");
+	importlib("stdole2.tlb");
+
+	//  Primary dispatch interface for CPaint2Doc
+
+	[ uuid(442a4113-7cbf-4716-be3d-66fbe1205778) ]
+	dispinterface IPaint2
+	{
+		properties:
+
+		methods:
+	};
+
+	//  Class information for CPaint2Doc
+
+	[ uuid(2cfaa8b7-7152-435f-98e3-df1cf8117ddc) ]
+	coclass Paint2
+	{
+		[default] dispinterface IPaint2;
+	};
+};

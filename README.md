@@ -1,5 +1,5 @@
 # Paint_MFC_VS
-Tool similar to Paint app
+Tool similar with Paint app
 
 Feature:
     - Draw an shape (with thick or not) (Rectangle, Circle, Ellipse, Square, Line).

@@ -8,7 +8,9 @@
 #include "Paint2Dlg.h"
 #include "DlgProxy.h"
 #include "afxdialogex.h"
-
+#include "Figure.h"
+#include "RectangleF.h"
+#include "stdafx.h"
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -55,6 +57,8 @@ IMPLEMENT_DYNAMIC(CPaint2Dlg, CDialogEx);
 
 CPaint2Dlg::CPaint2Dlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_PAINT2_DIALOG, pParent)
+	, name(_T(""))
+	, Thick(FALSE)
 {
 	EnableActiveAccessibility();
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
@@ -73,6 +77,8 @@ CPaint2Dlg::~CPaint2Dlg()
 void CPaint2Dlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	//DDX_Text(pDX, IDC_EDIT2, name);
+	DDX_Check(pDX, IDC_CHECK1, Thick);
 }
 
 BEGIN_MESSAGE_MAP(CPaint2Dlg, CDialogEx)
@@ -80,7 +86,23 @@ BEGIN_MESSAGE_MAP(CPaint2Dlg, CDialogEx)
 	ON_WM_CLOSE()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_WM_LBUTTONDOWN()
+	ON_WM_LBUTTONUP()
+	ON_WM_MOUSEMOVE()
+	ON_WM_LBUTTONDOWN()
+	ON_WM_LBUTTONUP()
+	ON_WM_MOUSEMOVE()
 	ON_BN_CLICKED(IDC_BUTTON2, &CPaint2Dlg::OnBnClickedButton2)
+	ON_BN_CLICKED(IDC_RADIO1, &CPaint2Dlg::OnBnClickedRadio1)
+	ON_BN_CLICKED(IDC_BUTTON3, &CPaint2Dlg::OnBnClickedButton3)
+	ON_BN_CLICKED(IDC_RADIO2, &CPaint2Dlg::OnBnClickedRadio2)
+	ON_BN_CLICKED(IDC_RADIO3, &CPaint2Dlg::OnBnClickedRadio3)
+	ON_BN_CLICKED(IDC_RADIO4, &CPaint2Dlg::OnBnClickedRadio4)
+	ON_BN_CLICKED(IDC_RADIO5, &CPaint2Dlg::OnBnClickedRadio5)
+	ON_BN_CLICKED(IDC_CHECK1, &CPaint2Dlg::OnBnClickedCheck1)
+	ON_BN_CLICKED(IDC_BUTTON1, &CPaint2Dlg::OnBnClickedButton1)
+	ON_BN_CLICKED(IDC_BUTTON4, &CPaint2Dlg::OnBnClickedButton4)
+	ON_BN_CLICKED(IDC_BUTTON5, &CPaint2Dlg::OnBnClickedButton5)
 END_MESSAGE_MAP()
 
 
@@ -158,7 +180,25 @@ void CPaint2Dlg::OnPaint()
 	}
 	else
 	{
+		CPaintDC dc(this); // device context for painting
+		for (int i = 0; i < figs.GetSize(); i++) // Here we draw all the figures over and over again
+			figs[i]->Draw(&dc);
+
 		CDialogEx::OnPaint();
+		if (Submit == true && name != "") // If we entered a name , we want this code to run
+		{
+			CRect rect;
+			GetClientRect(&rect);  // Get screen rectangle
+			CFont font;
+			font.CreatePointFont(350, _T("Arial"));
+			CFont* oldFont = dc.SelectObject(&font);
+			dc.SetBkMode(TRANSPARENT); // Transparent so they hide other
+			dc.SetTextColor(nameColor); //Set color according to user preference
+			dc.DrawText(name, &rect, DT_SINGLELINE | DT_BOTTOM | DT_LEFT); // draw
+			rect.OffsetRect(0, -50); // offset a little
+			dc.DrawText(_T("Hello"), &rect, DT_SINGLELINE | DT_BOTTOM | DT_LEFT); // add hello
+			CDialogEx::OnPaint();
+		}
 	}
 }
 
@@ -174,6 +214,114 @@ HCURSOR CPaint2Dlg::OnQueryDragIcon()
 //  message handlers make sure that if the proxy is still in use,
 //  then the UI is hidden but the dialog remains around if it
 //  is dismissed.
+void CPaint2Dlg::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	isPressed = true;
+
+	
+	if (Delete) // If we are in delete state 
+	{
+		for (int i = figs.GetSize() - 1; i >= 0; i--) // We run from the end to the beginning , to delete the latest object (the front object)
+		{
+			if (figs[i]->isInside(point)) // If mouse cursor isInside
+			{
+				figs[i]->P1.x = NULL; // Delete all his values
+				figs[i]->P1.y = NULL;
+				figs[i]->P2.x = NULL;
+				figs[i]->P2.y = NULL;
+				Invalidate();
+				break;
+			}
+
+		}
+	}
+
+	else if (Move) // If we are in a move state
+	{
+		int counter = 0; // Here we count how many objects our mouse isInside
+		for (int i = 0; i < figs.GetSize(); i++)
+		{
+			if (figs[i]->isInside(point)) // If mouse cursor isInside
+			{
+				counter++;
+				temp = i; // Save the latest index
+			}
+			else if (counter == 0)temp = -1; // Else we assign -1 to temp to indicate our mouse isn't pointing on any object
+		}
+	}
+
+	else // If we are not in a move state , we are drawing
+	{
+
+		start = point;
+		switch (futureFigureKind) // What shape ? add to figure array
+		{
+		case 1:
+			figs.Add(new RectangleF(start, start));
+			break;
+		case 2:
+			figs.Add(new CircleF(start, start));
+			break;
+		case 3:
+			figs.Add(new SquareF(start, start));
+			break;
+		case 4:
+			figs.Add(new EllipseF(start, start));
+			break;
+		case 5:
+			figs.Add(new LineF(start, start));
+			break;
+		}
+		CDialogEx::OnLButtonDown(nFlags, point);
+
+	}
+}
+void CPaint2Dlg::OnLButtonUp(UINT nFlags, CPoint point)
+{
+	if (isPressed && Draw) // If we're not in a "Move object" state and mouse is pressed , we wanna draw
+	{
+		end = point;
+		figs[figs.GetSize() - 1]->Redefine(start, end);
+		Invalidate(); //simulates the WM_PAINT message to redraw window
+		undo.RemoveAll(); // Cleaning the undo array
+	}
+	isPressed = false;
+	flag = 0;
+
+	CDialogEx::OnLButtonUp(nFlags, point);
+}
+
+void CPaint2Dlg::OnMouseMove(UINT nFlags, CPoint point)
+{
+	if (Move && temp != -1 && isPressed) // If we're in a "Move object" state and our mouse is inside atleast 1 object and mouse is pressed
+	{
+		if (flag == 0) // If it's the first mouse movement
+		{
+			lastPoint = point;
+			flag = 1;
+		}
+		else // For any other mouse movements , calculate the new position by comparing with the last position and adjusting
+		{
+			figs[temp]->P1.x += (point.x - lastPoint.x);
+			figs[temp]->P1.y += (point.y - lastPoint.y);
+			figs[temp]->P2.x += (point.x - lastPoint.x);
+			figs[temp]->P2.y += (point.y - lastPoint.y);
+			lastPoint = point;
+			Invalidate();
+		}
+	}
+
+	else if (isPressed && Draw) // If we're not in a "Move object" and mouse is pressed we draw
+	{
+		end = point;
+		figs[figs.GetSize() - 1]->Redefine(start, end);
+		figs[figs.GetSize() - 1]->figureColor = shapeColor;
+		figs[figs.GetSize() - 1]->figureFrameColor = frameColor;
+		figs[figs.GetSize() - 1]->Thick = Thick;
+		Invalidate(); //simulates the WM_PAINT message to redraw window
+	}
+	CDialogEx::OnMouseMove(nFlags, point);
+}
 
 void CPaint2Dlg::OnClose()
 {
@@ -209,7 +357,97 @@ BOOL CPaint2Dlg::CanExit()
 
 
 
+void CPaint2Dlg::OnBnClickedRadio1()
+{
+	// TODO: Add your control notification handler code here
+	futureFigureKind = 1; // Rectangle
+	OnBnClickedButton3(); // Call to draw button
+}
+
+
+
+void CPaint2Dlg::OnBnClickedRadio2()
+{
+	// TODO: Add your control notification handler code here
+	futureFigureKind = 2;	//Circle
+	OnBnClickedButton3();
+}
+
+
+void CPaint2Dlg::OnBnClickedRadio3()
+{
+	// TODO: Add your control notification handler code here
+	futureFigureKind = 3;	//square
+	OnBnClickedButton3();
+}
+
+
+void CPaint2Dlg::OnBnClickedRadio4()
+{
+	// TODO: Add your control notification handler code here
+	futureFigureKind = 4;	//ellipse
+	OnBnClickedButton3();
+}
+
+
+void CPaint2Dlg::OnBnClickedRadio5()
+{
+	// TODO: Add your control notification handler code here
+	futureFigureKind = 5;	//Line
+	OnBnClickedButton3();
+}
+
+
+void CPaint2Dlg::OnBnClickedCheck1()
+{
+	// TODO: Add your control notification handler code here
+	Thick = true;
+}
+
+
+void CPaint2Dlg::OnBnClickedButton1()
+{
+	// TODO: Add your control notification handler code here
+	CColorDialog dlg;
+	if (dlg.DoModal() == IDOK)
+	{
+		shapeColor = dlg.GetColor();
+	}
+}
+
 void CPaint2Dlg::OnBnClickedButton2()
 {
 	// TODO: Add your control notification handler code here
+	CColorDialog dlg;
+	if (dlg.DoModal() == IDOK)
+	{
+		nameColor = dlg.GetColor();
+	}
+	Invalidate();
+}
+
+void CPaint2Dlg::OnBnClickedButton3()	//draw
+{
+	// TODO: Add your control notification handler code here
+	Move = false; // Since draw is our default , we just need to disable Move
+	Delete = false;
+	Draw = true;
+}
+
+
+void CPaint2Dlg::OnBnClickedButton4()	//move
+{
+	// TODO: Add your control notification handler code here
+	Move = true;
+	Delete = false;
+	Draw = false;
+}
+
+
+void CPaint2Dlg::OnBnClickedButton5()
+{
+	// TODO: Add your control notification handler code here
+	Move = false;
+	Delete = true;
+	Draw = false;
 }
